@@ -1,0 +1,71 @@
+name: 📱 Expo Preview Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: 🏗️ Setup Expo
+      uses: expo/expo-github-action@v8
+      with:
+        expo-version: latest
+        token: ${{ secrets.EXPO_TOKEN }}
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 🧪 Run tests
+      run: npm test -- --coverage --watchAll=false
+
+    - name: 🔍 Run linting
+      run: npm run lint
+
+    - name: 📱 Create Expo preview
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          npx eas build --platform all --profile preview --non-interactive --no-wait
+        else
+          echo "Skipping preview build for push to main"
+        fi
+
+    - name: 📊 Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+
+  type-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: 📦 Install dependencies
+      run: npm ci
+
+    - name: 🔍 TypeScript type checking
+      run: npm run type-check
